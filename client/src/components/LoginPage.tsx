@@ -88,16 +88,16 @@ export function LoginPage({ onAuthed }: LoginPageProps) {
 
             <div>
               <label htmlFor="email" className="block text-gray-700 dark:text-gray-200 mb-2 transition-colors">
-                Email Address
+                Email or Username
               </label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5 group-focus-within:text-[#2563eb] transition-colors" />
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Enter your email or username"
                   className="w-full pl-11 pr-4 py-3 border border-gray-300 dark:border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent transition-all bg-gray-50 dark:bg-white/5 dark:backdrop-blur-xl focus:bg-white dark:focus:bg-white/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                   required
                 />

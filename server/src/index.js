@@ -15,60 +15,73 @@ import { authRouter } from "./routes/auth.js";
 import { complaintsRouter } from "./routes/complaints.js";
 import { adminRouter } from "./routes/admin.js";
 
-async function main() {
-  await connectToDatabase(env.MONGODB_URI);
+const app = express();
 
-  const app = express();
+app.set("trust proxy", 1);
 
-  app.set("trust proxy", 1);
+app.use(
+  cors({
+    origin: env.CLIENT_ORIGIN || "*",
+    credentials: true,
+  })
+);
 
-  app.use(
-    cors({
-      origin: env.CLIENT_ORIGIN,
-      credentials: true,
-    })
-  );
+app.use(express.json({ limit: "1mb" }));
 
-  app.use(express.json({ limit: "1mb" }));
+// DB Connection Middleware for Serverless
+app.use(async (req, res, next) => {
+  try {
+    const mongoose = (await import("mongoose")).default;
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase(env.MONGODB_URI);
+    }
+  } catch (error) {
+    console.error("DB connection error:", error);
+  }
+  next();
+});
 
-  app.use(
-    session({
-      name: "civiclink.sid",
-      secret: env.SESSION_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: env.NODE_ENV === "production",
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-      },
-      store: MongoStore.create({
-        mongoUrl: env.MONGODB_URI,
-        collectionName: "sessions",
-        ttl: 60 * 60 * 24 * 7,
-      }),
-    })
-  );
+app.use(
+  session({
+    name: "civiclink.sid",
+    secret: env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    },
+    store: MongoStore.create({
+      mongoUrl: env.MONGODB_URI,
+      collectionName: "sessions",
+      ttl: 60 * 60 * 24 * 7,
+    }),
+  })
+);
 
-  app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/complaints", complaintsRouter);
-  app.use("/api/admin", adminRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/complaints", complaintsRouter);
+app.use("/api/admin", adminRouter);
 
-  app.use(notFoundHandler);
-  app.use(errorHandler);
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-  app.listen(env.PORT, () => {
+if (process.env.NODE_ENV !== "production") {
+  connectToDatabase(env.MONGODB_URI).then(() => {
+    app.listen(env.PORT, () => {
+      // eslint-disable-next-line no-console
+      console.log(`Server listening on http://localhost:${env.PORT}`);
+    });
+  }).catch((err) => {
     // eslint-disable-next-line no-console
-    console.log(`Server listening on http://localhost:${env.PORT}`);
+    console.error(err);
+    process.exitCode = 1;
   });
 }
 
-main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
-  process.exitCode = 1;
-});
+export default app;
 
